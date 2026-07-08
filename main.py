@@ -1,3 +1,4 @@
+import argparse
 import os
 
 from dotenv import load_dotenv
@@ -13,19 +14,27 @@ client = OpenAI(
     api_key=api_key,
 )
 
+parser = argparse.ArgumentParser(description="Chatbot")
+parser.add_argument("user_prompt", type=str, help="User prompt")
+args = parser.parse_args()
+# Now we can access `args.user_prompt`
+
 completion = client.chat.completions.create(
     model="openrouter/free",
-#    model="openai/gpt-oss-120b:free",
     messages=[
         {
             "role": "user",
-            "content": "Why is Boot.dev such a great place to learn backend development? Use one paragraph maximum.",
+            "content": args.user_prompt,
         }
     ],
 )
 
 
 def main():
+    if completion.usage is None:
+        raise RuntimeError("ERROR: API request failed")
+    print(f"Prompt tokens: {completion.usage.prompt_tokens}")
+    print(f"Response tokens: {completion.usage.completion_tokens}")
     print(completion.choices[0].message.content)
 
 
