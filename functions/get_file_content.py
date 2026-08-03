@@ -1,6 +1,24 @@
 import os
 from config import MAX_CHARS
 
+schema_get_file_content = {
+    "type": "function",
+    "function": {
+        "name": "get_file_content",
+        "description": "Gets the content of a specified file relative to the working directory. Truncates the file in case it's too large.",
+        "parameters": {
+            "type": "object",
+            "required": "file_path",
+            "properties": {
+                "file_path": {
+                    "type": "string",
+                    "description": "File path, relative to the working directory",
+                },
+            },
+        },
+    },
+}
+
 def get_file_content(working_directory: str, file_path: str) -> str:
     file_content_string = ""
     body = ""
