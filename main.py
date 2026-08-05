@@ -1,11 +1,10 @@
 import argparse
 import os
-import json
 
 from dotenv import load_dotenv
 from openai import OpenAI
 from prompts import system_prompt
-from call_function import available_functions
+from call_function import available_functions, call_function
 
 load_dotenv()
 api_key = os.environ.get("OPENROUTER_API_KEY")
@@ -28,30 +27,31 @@ messages = [
     {"role": "user", "content": args.user_prompt},
 ]
 
-completion = client.chat.completions.create(
-    model="openrouter/free",
-    messages=messages,
-    tools=available_functions,
-)
-
-message = completion.choices[0].message
-
-if message.tool_calls is not None:
-    for tool_call in message.tool_calls:
-        function_args = json.loads(tool_call.function.arguments or "{}")
-        print(f"Calling function: {tool_call.function.name}({function_args})")
-else:
-    print(message.content)
-
 def main():
+    completion = client.chat.completions.create(
+        model="openrouter/free",
+        messages=messages,
+        tools=available_functions,
+    )
+
+    message = completion.choices[0].message
+
+    if message.tool_calls is not None:
+        for tool_call in message.tool_calls:
+            result_message = call_function(tool_call, args.verbose)
+            if not result_message.get("content"):
+                raise Exception("Error: message content is blank")
+            if args.verbose:
+                print(f"-> {result_message['content']}")
+    else:
+        print(message.content)
+
     if completion.usage is None:
         raise RuntimeError("ERROR: API request failed")
     if args.verbose:
         print(f"User prompt: {args.user_prompt}")
         print(f"Prompt tokens: {completion.usage.prompt_tokens}")
         print(f"Response tokens: {completion.usage.completion_tokens}")
-    print(completion.choices[0].message.content)
-
 
 if __name__ == "__main__":
     main()
