@@ -1,5 +1,6 @@
 import argparse
 import os
+import sys
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -28,30 +29,40 @@ messages = [
 ]
 
 def main():
-    completion = client.chat.completions.create(
-        model="openrouter/free",
-        messages=messages,
-        tools=available_functions,
-    )
+    for _ in range(20):
+        completion = client.chat.completions.create(
+            model="openrouter/free",
+            messages=messages,
+            tools=available_functions,
+        )
 
-    message = completion.choices[0].message
+        if completion.usage is None:
+            raise RuntimeError("ERROR: API request failed")
 
-    if message.tool_calls is not None:
-        for tool_call in message.tool_calls:
-            result_message = call_function(tool_call, args.verbose)
-            if not result_message.get("content"):
-                raise Exception("Error: message content is blank")
-            if args.verbose:
-                print(f"-> {result_message['content']}")
-    else:
-        print(message.content)
+        if args.verbose:
+            print(f"User prompt: {args.user_prompt}")
+            print(f"Prompt tokens: {completion.usage.prompt_tokens}")
+            print(f"Response tokens: {completion.usage.completion_tokens}")
 
-    if completion.usage is None:
-        raise RuntimeError("ERROR: API request failed")
-    if args.verbose:
-        print(f"User prompt: {args.user_prompt}")
-        print(f"Prompt tokens: {completion.usage.prompt_tokens}")
-        print(f"Response tokens: {completion.usage.completion_tokens}")
+        message = completion.choices[0].message
+        messages.append(message)
+
+        if message.tool_calls:
+            for tool_call in message.tool_calls:
+                result_message = call_function(tool_call, args.verbose)
+                if not result_message.get("content"):
+                    raise Exception("Error: message content is blank")
+                messages.append(result_message)
+                if args.verbose:
+                    print(f"-> {result_message['content']}")
+        else:
+            print(message.content)
+            sys.exit(0)
+
+
+
+    print(f"Error: maximum number of iterations reached; no final response is given")
+    sys.exit(1)
 
 if __name__ == "__main__":
     main()
